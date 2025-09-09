@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { Study, Source } from './types';
 import { fetchAutismStudies } from './services/geminiService';
 import { Header } from './components/Header';
@@ -6,7 +6,7 @@ import { SearchBar } from './components/SearchBar';
 import { StudyCard } from './components/StudyCard';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { Footer } from './components/Footer';
-import { WelcomeMessage } from './components/WelcomeMessage';
+import { Dashboard } from './components/WelcomeMessage';
 import { SourceList } from './components/SourceList';
 
 export default function App() {
@@ -16,6 +16,28 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // State for the new dashboard
+  const [dashboardStudies, setDashboardStudies] = useState<Study[]>([]);
+  const [isDashboardLoading, setIsDashboardLoading] = useState<boolean>(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  // Fetch news for the dashboard on initial load
+  useEffect(() => {
+    const fetchDashboardNews = async () => {
+      try {
+        setIsDashboardLoading(true);
+        setDashboardError(null);
+        const { studies: news } = await fetchAutismStudies('últimas notícias e estudos sobre autismo de universidades');
+        setDashboardStudies(news);
+      } catch (err) {
+        setDashboardError(err instanceof Error ? err.message : 'Não foi possível carregar as notícias.');
+      } finally {
+        setIsDashboardLoading(false);
+      }
+    };
+    fetchDashboardNews();
+  }, []);
 
   const performSearch = useCallback(async (topic: string) => {
     if (!topic) return;
@@ -74,7 +96,14 @@ export default function App() {
             {isLoading && <LoadingSpinner />}
             {error && <p className="text-center text-red-500 bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">{error}</p>}
             
-            {!hasSearched && !isLoading && <WelcomeMessage onTopicClick={handleTopicClick} />}
+            {!hasSearched && !isLoading && (
+                <Dashboard 
+                    studies={dashboardStudies}
+                    isLoading={isDashboardLoading}
+                    error={dashboardError}
+                    onTopicClick={handleTopicClick}
+                />
+            )}
 
             {hasSearched && !isLoading && studies.length === 0 && !error && (
               <p className="text-center text-slate-500 dark:text-slate-400 mt-12 text-lg">
